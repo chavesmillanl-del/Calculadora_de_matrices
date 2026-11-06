@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculadora de Inversa de Matrices</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fdf4ff',
+              100: '#fae8ff',
+              200: '#f5d0fe',
+              300: '#f0abfc',
+              400: '#e879f9',
+              500: '#d946ef',
+              600: '#c026d3',
+              700: '#a21caf',
+              800: '#86198f',
+              900: '#701a75',
+              950: '#4a044e',
+            }
+          },
+          fontFamily: {
+            mono: ['SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', 'Courier New', 'monospace'],
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Styling brackets for matrices like linear algebra textbooks */
+    .matrix-bracket {
+      position: relative;
+      padding: 6px 12px;
+      display: inline-block;
+    }
+    .matrix-bracket::before, .matrix-bracket::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 10px;
+      border: 3px solid currentColor;
+      pointer-events: none;
+    }
+    .matrix-bracket::before {
+      left: 0;
+      border-right: none;
+      border-top-left-radius: 12px;
+      border-bottom-left-radius: 12px;
+    }
+    .matrix-bracket::after {
+      right: 0;
+      border-left: none;
+      border-top-right-radius: 12px;
+      border-bottom-right-radius: 12px;
+    }
+
+    /* Vertical dashed divider for augmented matrices */
+    .augmented-divider {
+      border-right: 2px dashed rgba(168, 85, 247, 0.7);
+    }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(168, 85, 247, 0.3);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(168, 85, 247, 0.6);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-full font-sans antialiased pb-20">
+
+  <!-- Header Banner -->
+  <header class="bg-gradient-to-r from-purple-900 via-fuchsia-700 to-pink-600 text-white shadow-xl mb-8">
+    <div class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20">
+          <svg class="w-8 h-8 text-pink-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Calculadora de Matrices Profesional</h1>
+          <p class="text-xs sm:text-sm text-fuchsia-100 font-medium">Cálculo de inversas paso a paso: método de la adjunta y Gauss-Jordan</p>
+        </div>
+      </div>
+
+      <!-- Header Controls: Output Format, Precision & Theme Toggle -->
+      <div class="flex flex-wrap items-center gap-3 bg-black/20 p-2 rounded-2xl border border-white/10 backdrop-blur-md">
+        <!-- Display Format Toggle -->
+        <div class="flex items-center bg-white/10 rounded-xl p-1 border border-white/10 text-xs font-semibold">
+          <button id="fmtFracBtn" onclick="setFormat('frac')" class="px-3 py-1.5 rounded-lg transition shadow-sm bg-white text-purple-900 font-bold">Fracción</button>
+          <button id="fmtDecBtn" onclick="setFormat('dec')" class="px-3 py-1.5 rounded-lg transition text-white hover:text-fuchsia-200">Decimal</button>
+        </div>
+
+        <!-- Decimal Digits Input -->
+        <div id="decDigitsContainer" class="hidden flex items-center gap-1.5 px-2 py-1 bg-white/10 rounded-xl border border-white/10 text-xs">
+          <span class="text-slate-200 font-medium">Dec:</span>
+          <input type="number" id="decDigitsInput" value="4" min="0" max="10" onchange="updateDecDigits()" class="w-10 px-1 py-0.5 rounded bg-slate-900/80 text-white font-mono text-center focus:outline-none text-xs">
+        </div>
+
+        <!-- Theme Toggle -->
+        <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition border border-white/10" title="Cambiar Tema">
+          <svg id="themeMoon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.03 9.03 0 0012 21a9.03 9.03 0 008.354-5.646z"></path></svg>
+          <svg id="themeSun" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+
+    <!-- Global Error / Alert Box -->
+    <div id="errorAlert" class="hidden transform transition-all duration-300 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 p-4 rounded-2xl shadow-md flex items-start justify-between">
+      <div class="flex items-center gap-3">
+        <svg class="w-6 h-6 flex-shrink-0 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span id="errorMessage" class="text-sm font-semibold">Mensaje de error</span>
+      </div>
+      <button onclick="hideError()" class="text-rose-400 hover:text-rose-600 font-bold text-lg leading-none">&times;</button>
+    </div>
+
+    <!-- Section 1: Dynamic Matrix Workspace -->
+    <section class="space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <span>Espacio de Trabajo de Matrices</span>
+            <span id="matrixCountBadge" class="px-2.5 py-0.5 text-xs font-extrabold bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 rounded-full border border-purple-200 dark:border-purple-800">2 Matrices</span>
+          </h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Agrega, clona o elimina cuantas matrices desees y configúralas individualmente.</p>
+        </div>
+
+        <button onclick="addMatrix()" class="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-700 hover:to-fuchsia-700 text-white rounded-2xl transition font-bold text-sm shadow-md flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+          + Agregar Matriz
+        </button>
+      </div>
+
+      <!-- Matrices Grid Container -->
+      <div id="matricesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+        <!-- Matrix cards dynamically injected -->
+      </div>
+    </section>
+
+    <!-- Section 2: Operations Control Hub -->
+    <section class="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200/80 dark:border-slate-800 space-y-6">
+      
+      <!-- Target Matrix Selection Header -->
+      <div class="pb-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            Métodos para calcular la inversa paso a paso
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Selecciona la matriz y elige uno de los dos métodos para calcular su inversa.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-4 bg-slate-50 dark:bg-slate-800/60 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs">
+          <!-- Single Matrix Selector -->
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-slate-700 dark:text-slate-300">Matriz Unaria:</span>
+            <select id="singleTargetSelect" onchange="updateTargetLabels()" class="bg-white dark:bg-slate-700 rounded-xl px-3 py-1 font-bold text-purple-600 dark:text-purple-300 border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500">
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <!-- Selectores internos conservados para compatibilidad con el motor -->
+          <div class="hidden" aria-hidden="true">
+            <select id="binaryTarget1Select"></select>
+            <select id="binaryTarget2Select"></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ÚNICAS OPERACIONES DISPONIBLES: INVERSA POR ADJUNTA Y GAUSS-JORDAN -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        <div class="space-y-3 bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <h4 class="text-xs font-extrabold uppercase tracking-wider text-purple-600 dark:text-purple-400">
+            Inversa de una matriz (<span class="singleLabel">A</span>)
+          </h4>
+          <button onclick="execSingleOp('inversa')"
+            class="btn-pill w-full text-left px-4 py-3">
+            Inversa por método de la adjunta
+          </button>
+        </div>
+
+        <div class="space-y-3 bg-slate-50 dark:bg-slate-800/40 p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <h4 class="text-xs font-extrabold uppercase tracking-wider text-fuchsia-600 dark:text-fuchsia-400">
+            Método de eliminación
+          </h4>
+          <button onclick="execStepByStep('inversaStep')"
+            class="btn-pill w-full text-left px-4 py-3">
+            Inversa por Gauss-Jordan
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Output & Results Workspace -->
+    <section id="resultSection" class="hidden bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200/80 dark:border-slate-800 space-y-6 transition-all">
+      <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 rounded-2xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          </div>
+          <div>
+            <h3 id="resultTitle" class="text-xl font-bold text-slate-800 dark:text-slate-100">Resultado Detallado</h3>
+            <p id="resultSubtitle" class="text-xs text-slate-500 dark:text-slate-400">Procedimiento matemático paso a paso</p>
+          </div>
+        </div>
+
+        <!-- Copy / Target Selection dropdown for reusing result -->
+        <div id="reuseContainer" class="hidden flex items-center gap-2">
+          <span class="text-xs font-bold text-slate-600 dark:text-slate-400">Copiar Matriz Resultante a:</span>
+          <select id="reuseTargetSelect" class="bg-slate-100 dark:bg-slate-800 rounded-xl px-3 py-1.5 text-xs font-bold focus:outline-none border border-slate-200 dark:border-slate-700">
+            <!-- Populated dynamically -->
+          </select>
+          <button onclick="useResultAsTarget()" class="px-3 py-1.5 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition text-xs font-bold shadow">
+            Guardar
+          </button>
+        </div>
+      </div>
+
+      <!-- Result Content Area -->
+      <div id="resultBody" class="py-2">
+        <!-- Dynamic step-by-step content populated here -->
+      </div>
+    </section>
+
+  </main>
+
+  <style>
+    .btn-pill {
+      @apply px-3 py-2 bg-white dark:bg-slate-800 hover:bg-purple-50 dark:hover:bg-purple-950/40 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl transition font-semibold text-xs text-center shadow-sm hover:border-purple-300 dark:hover:border-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500/50;
+    }
+  </style>
+
+  <!-- JAVASCRIPT ENGINE -->
+  <script>
+    /* ==========================================================================
+       1. EXACT FRACTION ARITHMETIC ENGINE
+       ========================================================================== */
+    class Fraction {
+      constructor(num, den = 1) {
+        if (den === 0) throw new Error("División entre cero no permitida.");
+        if (typeof num === 'string' && num.includes('/')) {
+          const parts = num.split('/');
+          num = parseInt(parts[0], 10);
+          den = parseInt(parts[1], 10);
+        } else if (typeof num === 'string' && num.includes('.')) {
+          const dec = parseFloat(num);
+          const len = (num.split('.')[1] || '').length;
+          den = Math.pow(10, len);
+          num = Math.round(dec * den);
+        } else {
+          num = parseInt(num, 10);
+          den = parseInt(den, 10);
+        }
+
+        if (isNaN(num) || isNaN(den)) throw new Error("Entrada numérica inválida.");
+
+        if (den < 0) {
+          num = -num;
+          den = -den;
+        }
+
+        const g = Fraction.gcd(Math.abs(num), Math.abs(den));
+        this.n = num / g;
+        this.d = den / g;
+      }
+
+      static gcd(a, b) {
+        return b === 0 ? a : Fraction.gcd(b, a % b);
+      }
+
+      add(f) {
+        f = Fraction.from(f);
+        return new Fraction(this.n * f.d + f.n * this.d, this.d * f.d);
+      }
+
+      sub(f) {
+        f = Fraction.from(f);
+        return new Fraction(this.n * f.d - f.n * this.d, this.d * f.d);
+      }
+
+      mul(f) {
+        f = Fraction.from(f);
+        return new Fraction(this.n * f.n, this.d * f.d);
+      }
+
+      div(f) {
+        f = Fraction.from(f);
+        if (f.n === 0) throw new Error("División entre cero.");
+        return new Fraction(this.n * f.d, this.d * f.n);
+      }
+
+      neg() { return new Fraction(-this.n, this.d); }
+      isZero() { return this.n === 0; }
+      equals(f) {
+        f = Fraction.from(f);
+        return this.n === f.n && this.d === f.d;
+      }
+
+      toNumber() { return this.n / this.d; }
+
+      toString(mode = displayFormat, decDigits = decimalPrecision) {
+        if (mode === 'dec') {
+          const val = this.toNumber();
+          if (Number.isInteger(val)) return val.toString();
+          return val.toFixed(decDigits).replace(/\.?0+$/, "");
+        } else {
+          if (this.d === 1) return `${this.n}`;
+          return `${this.n}/${this.d}`;
+        }
+      }
+
+      static from(val) {
+        if (val instanceof Fraction) return val;
+        return new Fraction(val);
+      }
+
+      static ZERO() { return new Fraction(0); }
+      static ONE() { return new Fraction(1); }
+    }
+
+
+    /* ==========================================================================
+       2. MULTI-MATRIX SYSTEM STATE
+       ========================================================================== */
+    let displayFormat = 'frac'; // 'frac' | 'dec'
+    let decimalPrecision = 4;
+    let matricesList = [];
+    let lastResultMatrix = null;
+    let nextMatrixLetterCode = 65; // ASCII 'A'
+
+    window.onload = function() {
+      addMatrix([
+        [1, 2, 3],
+        [0, 1, 4],
+        [5, 6, 0]
+      ]);
+      addMatrix([
+        [1, 0, 2],
+        [2, -1, 3],
+        [4, 1, 8]
+      ]);
+    };
+
+    function generateMatrixLabel() {
+      const label = String.fromCharCode(nextMatrixLetterCode);
+      nextMatrixLetterCode++;
+      return label;
+    }
+
+    function addMatrix(initialData = null) {
+      hideError();
+      const label = generateMatrixLabel();
+      const rows = initialData ? initialData.length : 3;
+      const cols = initialData ? initialData[0].length : 3;
+
+      const matrixObj = { id: label, rows: rows, cols: cols };
+      matricesList.push(matrixObj);
+      renderMatrixCard(matrixObj, initialData);
+      updateSelectOptions();
+      updateMatrixBadgeCount();
+    }
+
+    function removeMatrix(matrixId) {
+      if (matricesList.length <= 1) {
+        showError("Debes mantener al menos una matriz en el espacio de trabajo.");
+        return;
+      }
+      matricesList = matricesList.filter(m => m.id !== matrixId);
+      const card = document.getElementById(`card_${matrixId}`);
+      if (card) card.remove();
+
+      updateSelectOptions();
+      updateMatrixBadgeCount();
+    }
+
+    function updateMatrixBadgeCount() {
+      const badge = document.getElementById('matrixCountBadge');
+      if (badge) badge.innerText = `${matricesList.length} Matriz${matricesList.length > 1 ? 'es' : ''}`;
+    }
+
+    function renderMatrixCard(matrixObj, initialData = null) {
+      const container = document.getElementById('matricesContainer');
+      const card = document.createElement('div');
+      card.id = `card_${matrixObj.id}`;
+      card.className = "bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200/80 dark:border-slate-800 flex flex-col justify-between space-y-4";
+
+      card.innerHTML = `
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-4 mb-4 border-b border-slate-100 dark:border-slate-800">
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-500 text-white font-bold flex items-center justify-center text-lg shadow-md">${matrixObj.id}</span>
+              <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100">Matriz ${matrixObj.id}</h3>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+                <label class="text-slate-500 dark:text-slate-400 pl-1">Filas:</label>
+                <select id="rows_${matrixObj.id}" onchange="resizeMatrixGrid('${matrixObj.id}')" class="bg-white dark:bg-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-100 font-bold">
+                  ${[1,2,3,4,5,6,7,8].map(n => `<option value="${n}" ${n===matrixObj.rows?'selected':''}>${n}</option>`).join('')}
+                </select>
+                <span class="text-slate-400">×</span>
+                <label class="text-slate-500 dark:text-slate-400">Cols:</label>
+                <select id="cols_${matrixObj.id}" onchange="resizeMatrixGrid('${matrixObj.id}')" class="bg-white dark:bg-slate-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-100 font-bold">
+                  ${[1,2,3,4,5,6,7,8].map(n => `<option value="${n}" ${n===matrixObj.cols?'selected':''}>${n}</option>`).join('')}
+                </select>
+              </div>
+
+              <button onclick="removeMatrix('${matrixObj.id}')" class="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition" title="Eliminar Matriz">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="py-4 flex justify-center overflow-x-auto min-h-[180px] items-center">
+            <div class="matrix-bracket text-purple-800 dark:text-purple-400">
+              <div id="grid_${matrixObj.id}" class="grid gap-2 p-1"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap gap-2 justify-between items-center text-xs">
+          <div class="flex flex-wrap gap-1.5">
+            <button onclick="fillPreset('${matrixObj.id}', 'identity')" class="px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 hover:bg-purple-100 transition font-medium">Identidad</button>
+            <button onclick="fillPreset('${matrixObj.id}', 'zeros')" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition font-medium">Ceros</button>
+            <button onclick="fillPreset('${matrixObj.id}', 'random')" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition font-medium">Aleatorio</button>
+          </div>
+
+          <div class="flex items-center gap-1">
+            <button onclick="duplicateMatrix('${matrixObj.id}')" class="px-2.5 py-1 rounded-lg bg-fuchsia-50 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-100 transition font-medium">Duplicar</button>
+          </div>
+        </div>
+      `;
+
+      container.appendChild(card);
+      initGrid(matrixObj.id, matrixObj.rows, matrixObj.cols, initialData);
+    }
+
+    function initGrid(matrixId, rows, cols, initialData = null) {
+      const grid = document.getElementById(`grid_${matrixId}`);
+      grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+      grid.innerHTML = '';
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.id = `cell_${matrixId}_${r}_${c}`;
+          input.value = initialData && initialData[r] && initialData[r][c] !== undefined ? initialData[r][c] : '0';
+          input.className = "w-12 sm:w-14 h-10 text-center font-mono text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 font-semibold text-slate-800 dark:text-slate-100 shadow-inner";
+          grid.appendChild(input);
+        }
+      }
+    }
+
+    function resizeMatrixGrid(matrixId) {
+      hideError();
+      const rows = parseInt(document.getElementById(`rows_${matrixId}`).value);
+      const cols = parseInt(document.getElementById(`cols_${matrixId}`).value);
+
+      const currentData = getMatrixValuesSafe(matrixId);
+      const mObj = matricesList.find(m => m.id === matrixId);
+      if (mObj) { mObj.rows = rows; mObj.cols = cols; }
+
+      initGrid(matrixId, rows, cols);
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cell = document.getElementById(`cell_${matrixId}_${r}_${c}`);
+          if (currentData[r] && currentData[r][c] !== undefined) {
+            cell.value = currentData[r][c];
+          }
+        }
+      }
+    }
+
+    function getMatrixValuesSafe(matrixId) {
+      const rows = parseInt(document.getElementById(`rows_${matrixId}`).value);
+      const cols = parseInt(document.getElementById(`cols_${matrixId}`).value);
+      const data = [];
+      for (let r = 0; r < rows; r++) {
+        const row = [];
+        for (let c = 0; c < cols; c++) {
+          const el = document.getElementById(`cell_${matrixId}_${r}_${c}`);
+          row.push(el ? el.value : '0');
+        }
+        data.push(row);
+      }
+      return data;
+    }
+
+    function getMatrix(matrixId) {
+      hideError();
+      const rows = parseInt(document.getElementById(`rows_${matrixId}`).value);
+      const cols = parseInt(document.getElementById(`cols_${matrixId}`).value);
+      const matrix = [];
+
+      for (let r = 0; r < rows; r++) {
+        const row = [];
+        for (let c = 0; c < cols; c++) {
+          const val = document.getElementById(`cell_${matrixId}_${r}_${c}`).value.trim();
+          try {
+            row.push(new Fraction(val || 0));
+          } catch (e) {
+            showError(`Error en celda (${r+1},${c+1}) de Matriz ${matrixId}: "${val}" no es un número o fracción válido.`);
+            throw e;
+          }
+        }
+        matrix.push(row);
+      }
+      return matrix;
+    }
+
+    function setMatrixValues(matrixId, matrixFracs) {
+      const rows = matrixFracs.length;
+      const cols = matrixFracs[0].length;
+      
+      const mObj = matricesList.find(m => m.id === matrixId);
+      if (mObj) { mObj.rows = rows; mObj.cols = cols; }
+
+      document.getElementById(`rows_${matrixId}`).value = rows;
+      document.getElementById(`cols_${matrixId}`).value = cols;
+      initGrid(matrixId, rows, cols);
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          document.getElementById(`cell_${matrixId}_${r}_${c}`).value = matrixFracs[r][c].toString(displayFormat, decimalPrecision);
+        }
+      }
+    }
+
+    function fillPreset(matrixId, type) {
+      const rows = parseInt(document.getElementById(`rows_${matrixId}`).value);
+      const cols = parseInt(document.getElementById(`cols_${matrixId}`).value);
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cell = document.getElementById(`cell_${matrixId}_${r}_${c}`);
+          if (type === 'identity') cell.value = (r === c) ? '1' : '0';
+          else if (type === 'zeros') cell.value = '0';
+          else if (type === 'random') cell.value = (Math.floor(Math.random() * 19) - 9).toString();
+        }
+      }
+    }
+
+    function duplicateMatrix(matrixId) {
+      const currentData = getMatrixValuesSafe(matrixId);
+      addMatrix(currentData);
+    }
+
+    function updateSelectOptions() {
+      const singleSel = document.getElementById('singleTargetSelect');
+      const bin1Sel = document.getElementById('binaryTarget1Select');
+      const bin2Sel = document.getElementById('binaryTarget2Select');
+      const reuseSel = document.getElementById('reuseTargetSelect');
+
+      const prevSingle = singleSel.value;
+      const prevBin1 = bin1Sel.value;
+      const prevBin2 = bin2Sel.value;
+
+      let optionsHTML = matricesList.map(m => `<option value="${m.id}">Matriz ${m.id}</option>`).join('');
+
+      singleSel.innerHTML = optionsHTML;
+      bin1Sel.innerHTML = optionsHTML;
+      bin2Sel.innerHTML = optionsHTML;
+      reuseSel.innerHTML = optionsHTML;
+
+      if (matricesList.some(m => m.id === prevSingle)) singleSel.value = prevSingle;
+      if (matricesList.some(m => m.id === prevBin1)) bin1Sel.value = prevBin1;
+      if (matricesList.some(m => m.id === prevBin2)) bin2Sel.value = prevBin2;
+      else if (matricesList.length > 1) bin2Sel.value = matricesList[1].id;
+
+      updateTargetLabels();
+    }
+
+    function updateTargetLabels() {
+      const val = document.getElementById('singleTargetSelect').value || 'A';
+      document.querySelectorAll('.singleLabel').forEach(el => el.innerText = val);
+    }
+
+    function setFormat(fmt) {
+      displayFormat = fmt;
+      document.getElementById('fmtFracBtn').className = fmt === 'frac' 
+        ? "px-3 py-1.5 rounded-lg transition shadow-sm bg-white text-purple-900 font-bold"
+        : "px-3 py-1.5 rounded-lg transition text-white hover:text-fuchsia-200";
+      document.getElementById('fmtDecBtn').className = fmt === 'dec' 
+        ? "px-3 py-1.5 rounded-lg transition shadow-sm bg-white text-purple-900 font-bold"
+        : "px-3 py-1.5 rounded-lg transition text-white hover:text-fuchsia-200";
+
+      document.getElementById('decDigitsContainer').classList.toggle('hidden', fmt !== 'dec');
+
+      if (!document.getElementById('resultSection').classList.contains('hidden') && window.lastOpExec) {
+        window.lastOpExec();
+      }
+    }
+
+    function updateDecDigits() {
+      const inp = document.getElementById('decDigitsInput');
+      decimalPrecision = parseInt(inp.value, 10) || 4;
+      if (window.lastOpExec) window.lastOpExec();
+    }
+
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      document.getElementById('themeSun').classList.toggle('hidden', !isDark);
+      document.getElementById('themeMoon').classList.toggle('hidden', isDark);
+    }
+
+    function showError(msg) {
+      document.getElementById('errorMessage').innerText = msg;
+      document.getElementById('errorAlert').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function hideError() {
+      document.getElementById('errorAlert').classList.add('hidden');
+    }
+
+    function useResultAsTarget() {
+      if (lastResultMatrix) {
+        const targetId = document.getElementById('reuseTargetSelect').value;
+        setMatrixValues(targetId, lastResultMatrix);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+
+    /* ==========================================================================
+       3. LINEAR ALGEBRA HELPER CALCULATIONS
+       ========================================================================== */
+    function cloneMatrix(M) {
+      return M.map(row => row.map(cell => new Fraction(cell.n, cell.d)));
+    }
+
+    function getSubmatrix(M, excludeRow, excludeCol) {
+      return M.filter((_, r) => r !== excludeRow).map(row => row.filter((_, c) => c !== excludeCol));
+    }
+
+    function determinant(M) {
+      if (M.length !== M[0].length) throw new Error("La matriz debe ser cuadrada.");
+      const n = M.length;
+      if (n === 1) return M[0][0];
+      if (n === 2) return M[0][0].mul(M[1][1]).sub(M[0][1].mul(M[1][0]));
+
+      let det = Fraction.ZERO();
+      for (let c = 0; c < n; c++) {
+        const subMat = getSubmatrix(M, 0, c);
+        const term = M[0][c].mul(determinant(subMat));
+        det = (c % 2 === 0) ? det.add(term) : det.sub(term);
+      }
+      return det;
+    }
+
+    function transpose(M) {
+      const rows = M.length, cols = M[0].length;
+      const res = [];
+      for (let c = 0; c < cols; c++) {
+        const row = [];
+        for (let r = 0; r < rows; r++) row.push(M[r][c]);
+        res.push(row);
+      }
+      return res;
+    }
+
+    function cofactorMatrix(M) {
+      if (M.length !== M[0].length) throw new Error("La matriz debe ser cuadrada.");
+      const n = M.length;
+      const res = [];
+      for (let r = 0; r < n; r++) {
+        const row = [];
+        for (let c = 0; c < n; c++) {
+          const sub = getSubmatrix(M, r, c);
+          const detSub = determinant(sub);
+          const sign = ((r + c) % 2 === 0) ? Fraction.ONE() : new Fraction(-1);
+          row.push(detSub.mul(sign));
+        }
+        res.push(row);
+      }
+      return res;
+    }
+
+    function adjointMatrix(M) { return transpose(cofactorMatrix(M)); }
+
+    function computeRREF(M) {
+      const A = cloneMatrix(M);
+      const rows = A.length, cols = A[0].length;
+      let lead = 0;
+
+      for (let r = 0; r < rows; r++) {
+        if (cols <= lead) break;
+        let i = r;
+        while (A[i][lead].isZero()) {
+          i++;
+          if (rows === i) { i = r; lead++; if (cols === lead) break; }
+        }
+        if (cols === lead) break;
+
+        let temp = A[i]; A[i] = A[r]; A[r] = temp;
+        let val = A[r][lead];
+        if (!val.isZero()) A[r] = A[r].map(cell => cell.div(val));
+
+        for (let j = 0; j < rows; j++) {
+          if (j !== r) {
+            let factor = A[j][lead];
+            A[j] = A[j].map((cell, k) => cell.sub(factor.mul(A[r][k])));
+          }
+        }
+        lead++;
+      }
+      return A;
+    }
+
+    function matrixRank(M) {
+      const rref = computeRREF(M);
+      let rank = 0;
+      for (let r = 0; r < rref.length; r++) {
+        if (rref[r].some(cell => !cell.isZero())) rank++;
+      }
+      return rank;
+    }
+
+    function trace(M) {
+      if (M.length !== M[0].length) throw new Error("La traza solo se define para matrices cuadradas.");
+      let sum = Fraction.ZERO();
+      for (let i = 0; i < M.length; i++) sum = sum.add(M[i][i]);
+      return sum;
+    }
+
+    function multiplyMatrices(A, B) {
+      if (A[0].length !== B.length) throw new Error("Incompatibilidad de dimensiones.");
+      const rA = A.length, cA = A[0].length, cB = B[0].length;
+      const res = [];
+      for (let i = 0; i < rA; i++) {
+        const row = [];
+        for (let j = 0; j < cB; j++) {
+          let sum = Fraction.ZERO();
+          for (let k = 0; k < cA; k++) sum = sum.add(A[i][k].mul(B[k][j]));
+          row.push(sum);
+        }
+        res.push(row);
+      }
+      return res;
+    }
+
+    function scalarMultiply(M, kFrac) {
+      return M.map(row => row.map(val => val.mul(kFrac)));
+    }
+
+
+    /* ==========================================================================
+       4. UNIVERSAL STEP-BY-STEP GENERATORS FOR ALL OPERATIONS
+       ========================================================================== */
+
+    function execSingleOp(opType) {
+      try {
+        const targetId = document.getElementById('singleTargetSelect').value;
+        const M = getMatrix(targetId);
+        window.lastOpExec = () => execSingleOp(opType);
+
+        if (opType === 'transpuesta') {
+          showResultHeader(`Transpuesta de Matriz ${targetId}`, `Intercambio de Filas por Columnas aᵢⱼ → aⱼᵢ`, true);
+          renderStepList(stepTranspose(M, targetId));
+        } else if (opType === 'determinante') {
+          showResultHeader(`Determinante de Matriz ${targetId}`, `Desarrollo por Cofactores / Sarrus`, false);
+          renderStepList(stepDeterminant(M, targetId));
+        } else if (opType === 'inversa') {
+          showResultHeader(`Matriz Inversa (${targetId})⁻¹`, `Método de la Matriz Adjunta: (1 / det) · Adj(M)`, true);
+          renderStepList(stepInverseAdjoint(M, targetId));
+        } else if (opType === 'rango') {
+          showResultHeader(`Rango de Matriz ${targetId}`, `Filas Linealmente Independientes vía RREF`, false);
+          renderStepList(stepRank(M, targetId));
+        } else if (opType === 'traza') {
+          showResultHeader(`Traza de Matriz ${targetId}`, `Suma Explícita de la Diagonal Principal`, false);
+          renderStepList(stepTrace(M, targetId));
+        } else if (opType === 'rref') {
+          showResultHeader(`Forma Escalonada Reducida (RREF)`, `Gauss-Jordan Paso a Paso`, true);
+          renderStepList(solveGaussianPedagogical(M, true));
+        } else if (opType === 'cofactores') {
+          showResultHeader(`Matriz de Cofactores de ${targetId}`, `Cálculo de Cᵢⱼ = (-1)⁽ⁱ⁺ʲ⁾ · det(Mᵢⱼ)`, true);
+          renderStepList(stepCofactors(M, targetId));
+        } else if (opType === 'adjunta') {
+          showResultHeader(`Matriz Adjunta de ${targetId}`, `Transpuesta de la Matriz de Cofactores: Adj(M) = (Cof(M))^T`, true);
+          renderStepList(stepAdjoint(M, targetId));
+        } else if (opType === 'polinomio') {
+          showResultHeader(`Polinomio Característico de ${targetId}`, `Cálculo Explícito de p(λ) = det(${targetId} - λI)`, false);
+          renderStepList(stepCharPolynomial(M, targetId));
+        } else if (opType === 'autovalores') {
+          showResultHeader(`Valores Propios (Eigenvalores) de ${targetId}`, `Raíces del Polinomio Característico p(λ) = 0`, false);
+          renderStepList(stepEigenvalues(M, targetId));
+        } else if (opType === 'frobenius') {
+          showResultHeader(`Norma de Frobenius de ${targetId}`, `||${targetId}||ᶠ = √( ∑ |aᵢⱼ|² )`, false);
+          renderStepList(stepFrobenius(M, targetId));
+        } else if (opType === 'escalar') {
+          const kStr = document.getElementById('scalarK').value;
+          const kFrac = new Fraction(kStr);
+          showResultHeader(`Multiplicación por Escalar k · ${targetId}`, `Distribución de k = ${kFrac.toString(displayFormat, decimalPrecision)} celda por celda`, true);
+          renderStepList(stepScalar(M, kFrac, targetId));
+        } else if (opType === 'potencia') {
+          const n = parseInt(document.getElementById('powerN').value, 10);
+          showResultHeader(`Potencia (${targetId})^${n}`, `Multiplicación Iterativa de Matrices`, true);
+          renderStepList(stepPower(M, n, targetId));
+        } else if (opType === 'propiedades') {
+          showResultHeader(`Análisis Completo de Propiedades de ${targetId}`, `Verificación Teórica Punto por Punto`, false);
+          renderStepList(stepProperties(M, targetId));
+        }
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    function execBinaryOp(opType) {
+      try {
+        const id1 = document.getElementById('binaryTarget1Select').value;
+        const id2 = document.getElementById('binaryTarget2Select').value;
+        const M1 = getMatrix(id1);
+        const M2 = getMatrix(id2);
+        window.lastOpExec = () => execBinaryOp(opType);
+
+        if (opType === 'suma') {
+          showResultHeader(`Suma de Matrices: ${id1} + ${id2}`, `Desglose Posición por Posición (aᵢⱼ + bᵢⱼ)`, true);
+          renderStepList(stepAddSub(M1, M2, 1, id1, id2));
+        } else if (opType === 'resta') {
+          showResultHeader(`Resta de Matrices: ${id1} - ${id2}`, `Desglose Posición por Posición (aᵢⱼ - bᵢⱼ)`, true);
+          renderStepList(stepAddSub(M1, M2, -1, id1, id2));
+        } else if (opType === 'mult12') {
+          showResultHeader(`Producto de Matrices: ${id1} · ${id2}`, `Producto Fila por Columna (Producto Punto Celda a Celda)`, true);
+          renderStepList(stepMultiply(M1, M2, id1, id2));
+        } else if (opType === 'mult21') {
+          showResultHeader(`Producto de Matrices: ${id2} · ${id1}`, `Producto Fila por Columna (Producto Punto Celda a Celda)`, true);
+          renderStepList(stepMultiply(M2, M1, id2, id1));
+        } else if (opType === 'hadamard') {
+          showResultHeader(`Producto Hadamard: ${id1} ⊙ ${id2}`, `Multiplicación Elemento a Elemento (aᵢⱼ · b_ij)`, true);
+          renderStepList(stepHadamard(M1, M2, id1, id2));
+        } else if (opType === 'resolver') {
+          showResultHeader(`Resolución de ${id1} · X = ${id2}`, `Despeje por Inversa: X = (${id1})⁻¹ · ${id2}`, true);
+          renderStepList(stepSolveAXB(M1, M2, id1, id2));
+        }
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+    /* --- STEP GENERATORS INDIVIDUAL OPERATORS --- */
+
+    // 1. Transpuesta
+    function stepTranspose(M, label) {
+      const rows = M.length, cols = M[0].length;
+      const res = transpose(M);
+      const steps = [];
+
+      let arith = `Dimensiones originales: ${rows}×${cols} → Nuevas dimensiones: ${cols}×${rows}\n\n`;
+      for (let r = 0; r < rows; r++) {
+        arith += `Fila ${r+1} de ${label} [ ${M[r].map(c => c.toString(displayFormat, decimalPrecision)).join(', ')} ] pasa a ser Columna ${r+1} de ${label}ᵀ.\n`;
+      }
+
+      steps.push({
+        title: `Intercambio de Filas y Columnas`,
+        pedagogy: `Para obtener la matriz transpuesta ${label}ᵀ, tomamos cada elemento aᵢⱼ en la posición (fila i, columna j) y lo reubicamos en la posición (fila j, columna i).`,
+        formula: `${label}ᵀ_ij = ${label}_ji`,
+        arithmetic: arith,
+        matrix: res
+      });
+
+      steps.summary = {
+        rank: matrixRank(res),
+        pivots: `${cols} filas × ${rows} columnas`,
+        freeVars: "N/A",
+        message: `Transposición completada con éxito.`
+      };
+      return steps;
+    }
+
+    // 2. Determinante
+    function stepDeterminant(M, label) {
+      if (M.length !== M[0].length) throw new Error("La matriz debe ser cuadrada.");
+      const n = M.length;
+      const steps = [];
+
+      if (n === 1) {
+        steps.push({
+          title: `Determinante de Matriz 1×1`,
+          pedagogy: `El determinante de una matriz de dimensión 1×1 es directamente su único elemento.`,
+          formula: `det(${label}) = a₁₁`,
+          arithmetic: `det(${label}) = ${M[0][0].toString(displayFormat, decimalPrecision)}`,
+          matrix: M
+        });
+      } else if (n === 2) {
+        const a = M[0][0], b = M[0][1], c = M[1][0], d = M[1][1];
+        const prod1 = a.mul(d);
+        const prod2 = b.mul(c);
+        const det = prod1.sub(prod2);
+
+        steps.push({
+          title: `Fórmula Directa 2×2: (Diagonal Principal) - (Diagonal Secundaria)`,
+          pedagogy: `Multiplicamos los elementos de la diagonal principal (a₁₁·a₂₂) y le restamos el producto de la diagonal secundaria (a₁₂·a₂₁).`,
+          formula: `det(${label}) = (a₁₁ · a₂₂) - (a₁₂ · a₂₁)`,
+          arithmetic: `det(${label}) = (${a.toString(displayFormat, decimalPrecision)} · ${d.toString(displayFormat, decimalPrecision)}) - (${b.toString(displayFormat, decimalPrecision)} · ${c.toString(displayFormat, decimalPrecision)})\n` +
+                      `          = (${prod1.toString(displayFormat, decimalPrecision)}) - (${prod2.toString(displayFormat, decimalPrecision)})\n` +
+                      `          = ${det.toString(displayFormat, decimalPrecision)}`,
+          matrix: M
+        });
+      } else if (n === 3) {
+        // Regla de Sarrus
+        const a11 = M[0][0], a12 = M[0][1], a13 = M[0][2];
+        const a21 = M[1][0], a22 = M[1][1], a23 = M[1][2];
+        const a31 = M[2][0], a32 = M[2][1], a33 = M[2][2];
+
+        const p1 = a11.mul(a22).mul(a33);
+        const p2 = a12.mul(a23).mul(a31);
+        const p3 = a13.mul(a21).mul(a32);
+        const sumPos = p1.add(p2).add(p3);
+
+        const m1 = a13.mul(a22).mul(a31);
+        const m2 = a11.mul(a23).mul(a32);
+        const m3 = a12.mul(a21).mul(a33);
+        const sumNeg = m1.add(m2).add(m3);
+
+        const det = sumPos.sub(sumNeg);
+
+        steps.push({
+          title: `Regla de Sarrus (Especial para 3×3)`,
+          pedagogy: `Sumamos los productos de las 3 diagonales principales descendentes y restamos los productos de las 3 diagonales secundarias ascendentes.`,
+          formula: `det(${label}) = (Diag₁ + Diag₂ + Diag₃) - (Diag₄ + Diag₅ + Diag₆)`,
+          arithmetic: `Diagonales Principales (+):\n` +
+                      `  P₁ = ${a11.toString(displayFormat, decimalPrecision)} · ${a22.toString(displayFormat, decimalPrecision)} · ${a33.toString(displayFormat, decimalPrecision)} = ${p1.toString(displayFormat, decimalPrecision)}\n` +
+                      `  P₂ = ${a12.toString(displayFormat, decimalPrecision)} · ${a23.toString(displayFormat, decimalPrecision)} · ${a31.toString(displayFormat, decimalPrecision)} = ${p2.toString(displayFormat, decimalPrecision)}\n` +
+                      `  P₃ = ${a13.toString(displayFormat, decimalPrecision)} · ${a21.toString(displayFormat, decimalPrecision)} · ${a32.toString(displayFormat, decimalPrecision)} = ${p3.toString(displayFormat, decimalPrecision)}\n` +
+                      `  Suma Positiva = ${sumPos.toString(displayFormat, decimalPrecision)}\n\n` +
+                      `Diagonales Secundarias (-):\n` +
+                      `  S₁ = ${a13.toString(displayFormat, decimalPrecision)} · ${a22.toString(displayFormat, decimalPrecision)} · ${a31.toString(displayFormat, decimalPrecision)} = ${m1.toString(displayFormat, decimalPrecision)}\n` +
+                      `  S₂ = ${a11.toString(displayFormat, decimalPrecision)} · ${a23.toString(displayFormat, decimalPrecision)} · ${a32.toString(displayFormat, decimalPrecision)} = ${m2.toString(displayFormat, decimalPrecision)}\n` +
+                      `  S₃ = ${a12.toString(displayFormat, decimalPrecision)} · ${a21.toString(displayFormat, decimalPrecision)} · ${a33.toString(displayFormat, decimalPrecision)} = ${m3.toString(displayFormat, decimalPrecision)}\n` +
+                      `  Suma Negativa = ${sumNeg.toString(displayFormat, decimalPrecision)}\n\n` +
+                      `Resultado = ${sumPos.toString(displayFormat, decimalPrecision)} - (${sumNeg.toString(displayFormat, decimalPrecision)}) = ${det.toString(displayFormat, decimalPrecision)}`,
+          matrix: M
+        });
+      } else {
+        // Laplace Expansion on Row 1
+        let detSum = Fraction.ZERO();
+        let arith = `Desarrollo por Cofactores a lo largo de la Fila 1:\n\n`;
+
+        for (let c = 0; c < n; c++) {
+          const val = M[0][c];
+          const sub = getSubmatrix(M, 0, c);
+          const subDet = determinant(sub);
+          const sign = (c % 2 === 0) ? 1 : -1;
+          const term = val.mul(subDet).mul(new Fraction(sign));
+          detSum = detSum.add(term);
+
+          arith += `Término c₁${c+1}: (-1)⁽¹⁺${c+1}) · (${val.toString(displayFormat, decimalPrecision)}) · det(Submatriz 1,${c+1})\n` +
+                   `          = (${sign > 0 ? '+1' : '-1'}) · (${val.toString(displayFormat, decimalPrecision)}) · (${subDet.toString(displayFormat, decimalPrecision)})\n` +
+                   `          = ${term.toString(displayFormat, decimalPrecision)}\n\n`;
+        }
+
+        arith += `Suma Total = ${detSum.toString(displayFormat, decimalPrecision)}`;
+
+        steps.push({
+          title: `Expansión de Laplace por Cofactores (Fila 1)`,
+          pedagogy: `Para matrices de dimensión 4×4 o superior, expandimos por la primera fila multiplicando cada elemento a₁ⱼ por su respectivo cofactor C₁ⱼ = (-1)⁽¹⁺ʲ⁾ · det(M₁ⱼ).`,
+          formula: `det(${label}) = ∑ a₁ⱼ · C₁ⱼ`,
+          arithmetic: arith,
+          matrix: M
+        });
+      }
+
+      steps.summary = {
+        rank: matrixRank(M),
+        pivots: `det = ${determinant(M).toString(displayFormat, decimalPrecision)}`,
+        freeVars: "N/A",
+        message: `El determinante es ${determinant(M).toString(displayFormat, decimalPrecision)}. ${determinant(M).isZero() ? 'La matriz es SINGULAR (no invertible).' : 'La matriz es NO SINGULAR (invertible).'}`
+      };
+      return steps;
+    }
+
+    // 3. Inversa por Adjunta
+    function stepInverseAdjoint(M, label) {
+      if (M.length !== M[0].length) throw new Error("La matriz debe ser cuadrada.");
+      const det = determinant(M);
+      if (det.isZero()) throw new Error(`El determinante de ${label} es 0; la matriz es singular y NO tiene inversa.`);
+
+      const steps = [];
+
+      // Paso 1: Determinante
+      steps.push({
+        title: `Paso 1: Verificación del Determinante`,
+        pedagogy: `Calculamos det(${label}) para asegurar que sea distinto de cero.`,
+        formula: `det(${label}) ≠ 0`,
+        arithmetic: `det(${label}) = ${det.toString(displayFormat, decimalPrecision)}`,
+        matrix: M
+      });
+
+      // Paso 2: Cofactores
+      const cof = cofactorMatrix(M);
+      steps.push({
+        title: `Paso 2: Matriz de Cofactores Cof(${label})`,
+        pedagogy: `Calculamos cada elemento Cᵢⱼ = (-1)⁽ⁱ⁺ʲ⁾ · det(Mᵢⱼ), donde Mᵢⱼ es la menor obtenida al eliminar la fila i y columna j.`,
+        formula: `Cᵢⱼ = (-1)⁽ⁱ⁺ʲ⁾ · det(Mᵢⱼ)`,
+        arithmetic: `Matriz de Cofactores resultante construida exitosamente.`,
+        matrix: cof
+      });
+
+      // Paso 3: Adjunta
+      const adj = transpose(cof);
+      steps.push({
+        title: `Paso 3: Matriz Adjunta Adj(${label}) = (Cof(${label}))ᵀ`,
+        pedagogy: `Transponemos la matriz de cofactores para obtener la matriz adjunta.`,
+        formula: `Adj(${label}) = (Cof(${label}))ᵀ`,
+        arithmetic: `Filas y columnas de Cof(${label}) intercambiadas.`,
+        matrix: adj
+      });
+
+      // Paso 4: Multiplicación por 1/det
+      const inv = scalarMultiply(adj, Fraction.ONE().div(det));
+      steps.push({
+        title: `Paso 4: Multiplicación por (1 / det(${label}))`,
+        pedagogy: `Dividimos cada elemento de la matriz adjunta entre el determinante det(${label}) = ${det.toString(displayFormat, decimalPrecision)}.`,
+        formula: `(${label})⁻¹ = (1 / det(${label})) · Adj(${label})`,
+        arithmetic: `Cada celda aᵢⱼ de la adjunta se multiplica por 1/(${det.toString(displayFormat, decimalPrecision)}).`,
+        matrix: inv
+      });
+
+      steps.summary = {
+        rank: matrixRank(M),
+        pivots: `Inversa existe`,
+        freeVars: "N/A",
+        message: `Inversa calculada exitosamente mediante el método de la matriz adjunta.`
+      };
+
+      lastResultMatrix = inv;
+      return steps;
+    }
+
+    // 4. Suma y Resta
+    function stepAddSub(A, B, sign, labelA, labelB) {
+      if (A.length !== B.length || A[0].length !== B[0].length) {
+        throw new Error("Dimensiones incompatibles: Ambas matrices deben tener exactamente la misma dimensión.");
+      }
+      const rows = A.length, cols = A[0].length;
+      const opName = sign === 1 ? 'Suma' : 'Resta';
+      const opSymbol = sign === 1 ? '+' : '-';
+
+      const res = [];
+      let arith = `Desglose celda por celda:\n\n`;
+
+      for (let r = 0; r < rows; r++) {
+        const row = [];
+        for (let c = 0; c < cols; c++) {
+          const valA = A[r][c];
+          const valB = B[r][c];
+          const cellRes = sign === 1 ? valA.add(valB) : valA.sub(valB);
+          row.push(cellRes);
+
+          arith += `  Posición (${r+1},${c+1}): (${valA.toString(displayFormat, decimalPrecision)}) ${opSymbol} (${valB.toString(displayFormat, decimalPrecision)}) = ${cellRes.toString(displayFormat, decimalPrecision)}\n`;
+        }
+        res.push(row);
+      }
+
+      const steps = [{
+        title: `${opName} Elemento a Elemento`,
+        pedagogy: `Para ${opName.toLowerCase()} dos matrices de igual dimensión (${rows}×${cols}), sumamos/restamos los elementos que ocupan la misma posición de celda.`,
+        formula: `Cᵢⱼ = Aᵢⱼ ${opSymbol} Bᵢⱼ`,
+        arithmetic: arith,
+        matrix: res
+      }];
+
+      steps.summary = {
+        rank: matrixRank(res),
+        pivots: `${rows}×${cols}`,
+        freeVars: "N/A",
+        message: `Operación de ${opName.toLowerCase()} finalizada.`
+      };
+
+      lastResultMatrix = res;
+      return steps;
+    }
+
+    // 5. Multiplicación A · B
+    function stepMultiply(A, B, labelA, labelB) {
+      if (A[0].length !== B.length) {
+        throw new Error(`Incompatibilidad de dimensiones: ${labelA} tiene ${A[0].length} columnas y ${labelB} tiene ${B.length} filas.`);
+      }
+      const rA = A.length, cA = A[0].length, cB = B[0].length;
+      const res = [];
+      let arith = `Desglose del Producto Punto Fila × Columna:\n\n`;
+
+      for (let i = 0; i < rA; i++) {
+        const row = [];
+        for (let j = 0; j < cB; j++) {
+          let sum = Fraction.ZERO();
+          let termsStr = [];
+          for (let k = 0; k < cA; k++) {
+            const prod = A[i][k].mul(B[k][j]);
+            sum = sum.add(prod);
+            termsStr.push(`(${A[i][k].toString(displayFormat, decimalPrecision)} · ${B[k][j].toString(displayFormat, decimalPrecision)})`);
+          }
+          row.push(sum);
+          arith += `  c_${i+1}${j+1} = ${termsStr.join(' + ')} = ${sum.toString(displayFormat, decimalPrecision)}\n`;
+        }
+        res.push(row);
+      }
+
+      const steps = [{
+        title: `Producto Punto: Fila i de ${labelA} · Columna j de ${labelB}`,
+        pedagogy: `Cada elemento cᵢⱼ de la matriz resultante se obtiene multiplicando término a término los elementos de la Fila i de ${labelA} con la Columna j de ${labelB} y sumando sus productos.`,
+        formula: `cᵢⱼ = ∑ (aᵢₖ · bₖⱼ)`,
+        arithmetic: arith,
+        matrix: res
+      }];
+
+      steps.summary = {
+        rank: matrixRank(res),
+        pivots: `${rA}×${cB}`,
+        freeVars: "N/A",
+        message: `Multiplicación matricial finalizada.`
+      };
+
+      lastResultMatrix = res;
+      return steps;
+    }
+
+    // 6. Producto Hadamard
+    function stepHadamard(A, B, labelA, labelB) {
+      if (A.length !== B.length || A[0].length !== B[0].length) {
+        throw new Error("Para el producto de Hadamard ambas matrices deben poseer dimensiones idénticas.");
+      }
+      const rows = A.length, cols = A[0].length;
+      const res = [];
+      let arith = `Multiplicación elemento a elemento:\n\n`;
+
+      for (let r = 0; r < rows; r++) {
+        const row = [];
+        for (let c = 0; c < cols; c++) {
+          const prod = A[r][c].mul(B[r][c]);
+          row.push(prod);
+          arith += `  Posición (${r+1},${c+1}): (${A[r][c].toString(displayFormat, decimalPrecision)}) ⊙ (${B[r][c].toString(displayFormat, decimalPrecision)}) = ${prod.toString(displayFormat, decimalPrecision)}\n`;
+        }
+        res.push(row);
+      }
+
+      const steps = [{
+        title: `Producto Elemento por Elemento (Hadamard)`,
+        pedagogy: `A diferencia del producto matricial estándar, el producto Hadamard multiplica individualmente los elementos de celdas homólogas.`,
+        formula: `Cᵢⱼ = Aᵢⱼ · Bᵢⱼ`,
+        arithmetic: arith,
+        matrix: res
+      }];
+
+      steps.summary = {
+        rank: matrixRank(res),
+        pivots: `${rows}×${cols}`,
+        freeVars: "N/A",
+        message: `Producto Hadamard finalizado.`
+      };
+
+      lastResultMatrix = res;
+      return steps;
+    }
+
+    // 7. Multiplicación por Escalar k
+    function stepScalar(M, kFrac, label) {
+      const rows = M.length, cols = M[0].length;
+      const res = [];
+      let arith = `Distribución de k = ${kFrac.toString(displayFormat, decimalPrecision)} en cada celda:\n\n`;
+
+      for (let r = 0; r < rows; r++) {
+        const row = [];
+        for (let c = 0; c < cols; c++) {
+          const prod = M[r][c].mul(kFrac);
+          row.push(prod);
+          arith += `  Posición (${r+1},${c+1}): ${kFrac.toString(displayFormat, decimalPrecision)} · (${M[r][c].toString(displayFormat, decimalPrecision)}) = ${prod.toString(displayFormat, decimalPrecision)}\n`;
+        }
+        res.push(row);
+      }
+
+      const steps = [{
+        title: `Distribución Escalar`,
+        pedagogy: `Multiplicamos el escalar k por todos y cada uno de los elementos de la matriz.`,
+        formula: `(k · M)ᵢⱼ = k · Mᵢⱼ`,
+        arithmetic: arith,
+        matrix: res
+      }];
+
+      steps.summary = {
+        rank: matrixRank(res),
+        pivots: `${rows}×${cols}`,
+        freeVars: "N/A",
+        message: `Multiplicación por escalar completada.`
+      };
+
+      lastResultMatrix = res;
+      return steps;
+    }
+
+    // 8. Rango y Traza
+    function stepRank(M, label) {
+      const rref = computeRREF(M);
+      const rankVal = matrixRank(M);
+
+      const steps = [{
+        title: `Conducción a Forma Escalonada Reducida por Filas (RREF)`,
+        pedagogy: `El rango es el número máximo de filas o columnas linealmente independientes. Se determina contando el número de filas no nulas tras aplicar eliminación de Gauss-Jordan.`,
+        formula: `rango(${label}) = nº de filas no nulas en RREF(${label})`,
+        arithmetic: `Matriz RREF resultante obtenida. Filas con pivotes no nulos = ${rankVal}.`,
+        matrix: rref
+      }];
+
+      steps.summary = {
+        rank: rankVal,
+        pivots: `Rango = ${rankVal}`,
+        freeVars: "N/A",
+        message: `El rango de la matriz ${label} es ${rankVal}.`
+      };
+      return steps;
+    }
+
+    function stepTrace(M, label) {
+      if (M.length !== M[0].length) throw new Error("La traza solo se define para matrices cuadradas.");
+      const n = M.length;
+      let sum = Fraction.ZERO();
+      let terms = [];
+
+      for (let i = 0; i < n; i++) {
+        const val = M[i][i];
+        sum = sum.add(val);
+        terms.push(`a_${i+1}${i+1} (${val.toString(displayFormat, decimalPrecision)})`);
+      }
+
+      const steps = [{
+        title: `Suma de la Diagonal Principal`,
+        pedagogy: `La traza de una matriz cuadrada es la suma simple de todos los elementos ubicados en su diagonal principal (donde fila = columna).`,
+        formula: `tr(${label}) = a₁₁ + a₂₂ + ... + aₙₙ`,
+        arithmetic: `tr(${label}) = ${terms.join(' + ')} = ${sum.toString(displayFormat, decimalPrecision)}`,
+        matrix: M
+      }];
+
+      steps.summary = {
+        rank: matrixRank(M),
+        pivots: `Traza = ${sum.toString(displayFormat, decimalPrecision)}`,
+        freeVars: "N/A",
+        message: `La traza de ${label} es ${sum.toString(displayFormat, decimalPrecision)}.`
+      };
+      return steps;
+    }
+
+    // 9. Cofactores y Adjunta independientes
+    function stepCofactors(M, label) {
+      const cof = cofactorMatrix(M);
+      const steps = [{
+        title: `Cálculo de Matriz de Cofactores`,
+        pedagogy: `Cada posición (i,j) se reemplaza por su cofactor Cᵢⱼ = (-1)⁽ⁱ⁺ʲ⁾ · det(Submatrizᵢⱼ).`,
+        formula: `Cᵢⱼ = (-1)⁽ⁱ⁺ʲ⁾ · det(Mᵢⱼ)`,
+        arithmetic: `Cofactores calculados celda a celda.`,
+        matrix: cof
+      }];
+      steps.summary = { rank: matrixRank(cof), pivots: "Cofactores", freeVars: "N/A", message: "Matriz de cofactores generada." };
+      lastResultMatrix = cof;
+      return steps;
+    }
+
+    function stepAdjoint(M, label) {
+      const cof = cofactorMatrix(M);
+      const adj = transpose(cof);
+      const steps = [{
+        title: `Transpuesta de la Matriz de Cofactores`,
+        pedagogy: `La matriz adjunta es igual a la transpuesta de la matriz de cofactores: Adj(${label}) = (Cof(${label}))ᵀ.`,
+        formula: `Adj(${label}) = (Cof(${label}))ᵀ`,
+        arithmetic: `Transposición realizada sobre la matriz de cofactores.`,
+        matrix: adj
+      }];
+      steps.summary = { rank: matrixRank(adj), pivots: "Adjunta", freeVars: "N/A", message: "Matriz adjunta generada." };
+      lastResultMatrix = adj;
+      return steps;
+    }
+
+    // 10. Polinomio Característico y Valores Propios
+    function stepCharPolynomial(M, label) {
+      if (M.length !== M[0].length) throw new Error("La matriz debe ser cuadrada.");
+      const n = M.length;
+      let polyStr = characteristicPolynomial(M);
+
+      const steps = [{
+        title: `Formulación p(λ) = det(${label} - λI)`,
+        pedagogy: `Restamos λ a los elementos de la diagonal principal de ${label} y calculamos el determinante simbólico resultante.`,
+        formula: `det(${label} - λI) = 0`,
+        arithmetic: `Polinomio Característico Desarrollado:\n\n  p(λ) = ${polyStr}`,
+        matrix: M
+      }];
+
+      steps.summary = { rank: matrixRank(M), pivots: "Polinomio", freeVars: "N/A", message: `p(λ) = ${polyStr}` };
+      return steps;
+    }
+
+    function stepEigenvalues(M, label) {
+      if (M.length !== M[0].length) throw new Error("La matriz debe ser cuadrada.");
+      const eigs = computeEigenvalues(M);
+      const polyStr = characteristicPolynomial(M);
+
+      const steps = [{
+        title: `Resolución de las Raíces p(λ) = 0`,
+        pedagogy: `Los valores propios (autovalores) son las raíces del polinomio característico p(λ) = 0.`,
+        formula: `p(λ) = 0`,
+        arithmetic: `Polinomio: ${polyStr}\n\nAutovalores (λ) calculados:\n  ` + eigs.map((e, idx) => `λ_${idx+1} = ${e}`).join('\n  '),
+        matrix: M
+      }];
+
+      steps.summary = { rank: matrixRank(M), pivots: eigs.join(', '), freeVars: "N/A", message: `Valores propios: ${eigs.join(', ')}` };
+      return steps;
+    }
+
+    // 11. Frobenius Norm
+    function stepFrobenius(M, label) {
+      const rows = M.length, cols = M[0].length;
+      let sumSq = 0;
+      let arith = `Suma de cuadrados de cada celda:\n\n`;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const val = M[r][c].toNumber();
+          const sq = val * val;
+          sumSq += sq;
+          arith += `  (${r+1},${c+1}): (${M[r][c].toString(displayFormat, decimalPrecision)})² = ${sq.toFixed(decimalPrecision)}\n`;
+        }
+      }
+
+      const norm = Math.sqrt(sumSq);
+      arith += `\nSuma total de cuadrados = ${sumSq.toFixed(decimalPrecision)}\n`;
+      arith += `||${label}||ᶠ = √(${sumSq.toFixed(decimalPrecision)}) = ${norm.toFixed(decimalPrecision)}`;
+
+      const steps = [{
+        title: `Raíz Cuadrada de la Suma de Cuadrados`,
+        pedagogy: `La norma de Frobenius es la medida de magnitud global de la matriz, elevando al cuadrado cada elemento, sumándolos y extrayendo la raíz cuadrada.`,
+        formula: `||${label}||ᶠ = √( ∑ |aᵢⱼ|² )`,
+        arithmetic: arith,
+        matrix: M
+      }];
+
+      steps.summary = { rank: matrixRank(M), pivots: `||M||ᶠ = ${norm.toFixed(decimalPrecision)}`, freeVars: "N/A", message: `Norma de Frobenius = ${norm.toFixed(decimalPrecision)}` };
+      return steps;
+    }
+
+    // 12. Potencia M^n
+    function stepPower(M, pow, label) {
+      if (M.length !== M[0].length) throw new Error("La matriz debe ser cuadrada.");
+      let steps = [];
+
+      if (pow === 0) {
+        const I = [];
+        for (let r = 0; r < M.length; r++) {
+          const row = [];
+          for (let c = 0; c < M.length; c++) row.push(r === c ? Fraction.ONE() : Fraction.ZERO());
+          I.push(row);
+        }
+        steps.push({
+          title: `Potencia 0: Matriz Identidad`,
+          pedagogy: `Cualquier matriz cuadrada elevada a la potencia 0 da como resultado la matriz identidad I de la misma dimensión.`,
+          formula: `(${label})⁰ = I`,
+          arithmetic: `I_${M.length}x${M.length}`,
+          matrix: I
+        });
+        lastResultMatrix = I;
+        return steps;
+      }
+
+      let curr = pow < 0 ? stepInverseAdjoint(M, label)[3].matrix : cloneMatrix(M);
+      let base = cloneMatrix(curr);
+      let absPow = Math.abs(pow);
+
+      steps.push({
+        title: `Estado Inicial (Potencia 1)`,
+        pedagogy: pow < 0 ? `Para potencias negativas, se invierte la matriz primero.` : `Base inicial para multiplicaciones iterativas.`,
+        formula: `(${label})¹`,
+        arithmetic: `Matriz base cargada.`,
+        matrix: curr
+      });
+
+      for (let p = 2; p <= absPow; p++) {
+        curr = multiplyMatrices(curr, base);
+        steps.push({
+          title: `Multiplicación Iterativa: Potencia ${p}`,
+          pedagogy: `Multiplicamos el resultado acumulado por la matriz base.`,
+          formula: `(${label})^${p} = (${label})^${p-1} · (${label})`,
+          arithmetic: `Paso ${p} de ${absPow} completado.`,
+          matrix: curr
+        });
+      }
+
+      steps.summary = { rank: matrixRank(curr), pivots: `Potencia ${pow}`, freeVars: "N/A", message: `Matriz elevada a ${pow} exitosamente.` };
+      lastResultMatrix = curr;
+      return steps;
+    }
+
+    // 13. Resolver A · X = B
+    function stepSolveAXB(A, B, labelA, labelB) {
+      const invA = stepInverseAdjoint(A, labelA)[3].matrix;
+      const res = multiplyMatrices(invA, B);
+
+      const steps = [
+        {
+          title: `Paso 1: Cálculo de Inversa (${labelA})⁻¹`,
+          pedagogy: `Despejamos X en la ecuación matricial ${labelA} · X = ${labelB} multiplicando a la izquierda por (${labelA})⁻¹.`,
+          formula: `X = (${labelA})⁻¹ · ${labelB}`,
+          arithmetic: `Inversa de ${labelA} obtenida.`,
+          matrix: invA
+        },
+        {
+          title: `Paso 2: Multiplicación (${labelA})⁻¹ · ${labelB}`,
+          pedagogy: `Multiplicamos la matriz inversa obtenida por la matriz de términos independientes ${labelB}.`,
+          formula: `X = (${labelA})⁻¹ · ${labelB}`,
+          arithmetic: `Multiplicación matricial paso a paso finalizada.`,
+          matrix: res
+        }
+      ];
+
+      steps.summary = { rank: matrixRank(res), pivots: "Solución X", freeVars: "N/A", message: "Matriz Incógnita X resuelta con éxito." };
+      lastResultMatrix = res;
+      return steps;
+    }
+
+    // 14. Panel de Propiedades Paso a Paso
+    function stepProperties(M, label) {
+      const rows = M.length, cols = M[0].length;
+      const isSquare = rows === cols;
+
+      let isSym = isSquare, isAntiSym = isSquare;
+      let isDiag = isSquare, isUpperTri = isSquare, isLowerTri = isSquare;
+      let isIdent = isSquare, isIdempotent = isSquare, isOrthogonal = isSquare;
+      let isInvertible = false;
+
+      let arith = `Verificación formal de cada propiedad:\n\n`;
+
+      arith += `1. Cuadrada: ${isSquare ? 'SÍ' : 'NO'} (${rows} filas × ${cols} columnas)\n`;
+
+      if (isSquare) {
+        try { 
+          const det = determinant(M);
+          isInvertible = !det.isZero(); 
+          arith += `2. Invertible: ${isInvertible ? 'SÍ' : 'NO'} (det = ${det.toString(displayFormat, decimalPrecision)})\n`;
+        } catch(e){}
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const val = M[r][c];
+            const valT = M[c][r];
+
+            if (!val.equals(valT)) isSym = false;
+            if (!val.equals(valT.neg())) isAntiSym = false;
+            if (r !== c && !val.isZero()) isDiag = false;
+            if (r > c && !val.isZero()) isUpperTri = false;
+            if (r < c && !val.isZero()) isLowerTri = false;
+            if (r === c && !val.equals(Fraction.ONE())) isIdent = false;
+            if (r !== c && !val.isZero()) isIdent = false;
+          }
+        }
+
+        arith += `3. Simétrica (M = Mᵀ): ${isSym ? 'SÍ' : 'NO'}\n`;
+        arith += `4. Antisimétrica (M = -Mᵀ): ${isAntiSym ? 'SÍ' : 'NO'}\n`;
+        arith += `5. Diagonal (aᵢⱼ = 0 para i ≠ j): ${isDiag ? 'SÍ' : 'NO'}\n`;
+        arith += `6. Triangular Superior (ceros bajo diagonal): ${isUpperTri ? 'SÍ' : 'NO'}\n`;
+        arith += `7. Triangular Inferior (ceros sobre diagonal): ${isLowerTri ? 'SÍ' : 'NO'}\n`;
+        arith += `8. Identidad (1s en diagonal, 0s fuera): ${isIdent ? 'SÍ' : 'NO'}\n`;
+
+        try {
+          const M2 = multiplyMatrices(M, M);
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              if (!M2[r][c].equals(M[r][c])) isIdempotent = false;
+            }
+          }
+          arith += `9. Idempotente (M² = M): ${isIdempotent ? 'SÍ' : 'NO'}\n`;
+        } catch(e) { isIdempotent = false; }
+
+        try {
+          const MT = transpose(M);
+          const MMT = multiplyMatrices(M, MT);
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const expected = (r === c) ? Fraction.ONE() : Fraction.ZERO();
+              if (!MMT[r][c].equals(expected)) isOrthogonal = false;
+            }
+          }
+          arith += `10. Ortogonal (M · Mᵀ = I): ${isOrthogonal ? 'SÍ' : 'NO'}\n`;
+        } catch(e) { isOrthogonal = false; }
+      }
+
+      const steps = [{
+        title: `Análisis Estructural Completo`,
+        pedagogy: `Evaluación matemática rigurosa de los axiomas y definiciones de clasificaciones de matrices.`,
+        formula: `Propiedades de Matriz ${label}`,
+        arithmetic: arith,
+        matrix: M
+      }];
+
+      steps.summary = { rank: matrixRank(M), pivots: "Análisis", freeVars: "N/A", message: `Propiedades evaluadas para ${label}.` };
+      return steps;
+    }
+
+
+    /* ==========================================================================
+       5. ELIMINATION SOLVERS (GAUSS, GAUSS-JORDAN, INVERSE & SYSTEM)
+       ========================================================================== */
+
+    function solveGaussianPedagogical(M, fullJordan = false) {
+      let A = cloneMatrix(M);
+      const rows = A.length, cols = A[0].length;
+      const steps = [];
+      let pivotRow = 0;
+      const pivotPositions = [];
+
+      for (let c = 0; c < cols && pivotRow < rows; c++) {
+        let maxRow = pivotRow;
+        while (maxRow < rows && A[maxRow][c].isZero()) maxRow++;
+
+        if (maxRow === rows) {
+          steps.push({
+            title: `Columna ${c + 1}: Sin Pivote Disponible`,
+            pedagogy: `Todas las entradas en y por debajo de la fila ${pivotRow + 1} son 0. Esta columna representa una variable libre.`,
+            formula: `Pivote en Col ${c + 1} = 0`,
+            arithmetic: `Se omite el pivoteo en esta columna.`,
+            matrix: cloneMatrix(A),
+            highlight: { pivotRow: null, pivotCol: null, modifiedRow: null }
+          });
+          continue;
+        }
+
+        if (maxRow !== pivotRow) {
+          let temp = A[pivotRow]; A[pivotRow] = A[maxRow]; A[maxRow] = temp;
+          steps.push({
+            title: `Pivoteo Parcial: Intercambio Fila ${pivotRow + 1} ↔ Fila ${maxRow + 1}`,
+            pedagogy: `Intercambiamos filas para obtener un elemento pivote no nulo en la posición diagonal (${pivotRow + 1}, ${c + 1}).`,
+            formula: `Fila ${pivotRow + 1} ↔ Fila ${maxRow + 1}`,
+            arithmetic: `Intercambio de filas completado.`,
+            matrix: cloneMatrix(A),
+            highlight: { pivotRow: pivotRow, pivotCol: c, modifiedRow: pivotRow }
+          });
+        }
+
+        let pivotVal = A[pivotRow][c];
+        pivotPositions.push({ r: pivotRow, c: c });
+
+        if (!pivotVal.equals(Fraction.ONE())) {
+          let factor = pivotVal;
+          A[pivotRow] = A[pivotRow].map(cell => cell.div(factor));
+          steps.push({
+            title: `Normalización del Pivote en Fila ${pivotRow + 1}`,
+            pedagogy: `Dividimos la Fila ${pivotRow + 1} entre ${factor.toString(displayFormat, decimalPrecision)} para hacer el pivote igual a 1.`,
+            formula: `Fila ${pivotRow + 1} ← Fila ${pivotRow + 1} / (${factor.toString(displayFormat, decimalPrecision)})`,
+            arithmetic: `Toda la Fila ${pivotRow + 1} dividida por el pivote.`,
+            matrix: cloneMatrix(A),
+            highlight: { pivotRow: pivotRow, pivotCol: c, modifiedRow: pivotRow }
+          });
+        }
+
+        const startR = fullJordan ? 0 : pivotRow + 1;
+        for (let r = startR; r < rows; r++) {
+          if (r !== pivotRow && !A[r][c].isZero()) {
+            let mult = A[r][c];
+            let oldRow = [...A[r]];
+            A[r] = A[r].map((cell, k) => cell.sub(mult.mul(A[pivotRow][k])));
+
+            const arithLines = oldRow.map((origVal, k) => {
+              const resVal = A[r][k];
+              return `  Col ${k + 1}: ${origVal.toString(displayFormat, decimalPrecision)} - (${mult.toString(displayFormat, decimalPrecision)}) · (${A[pivotRow][k].toString(displayFormat, decimalPrecision)}) = ${resVal.toString(displayFormat, decimalPrecision)}`;
+            }).join('\n');
+
+            steps.push({
+              title: `Eliminación: Fila ${r + 1}, Columna ${c + 1}`,
+              pedagogy: `Anulamos el elemento en (${r + 1}, ${c + 1}) restando (${mult.toString(displayFormat, decimalPrecision)}) veces la Fila Pivote ${pivotRow + 1}.`,
+              formula: `Fila ${r + 1} ← Fila ${r + 1} - (${mult.toString(displayFormat, decimalPrecision)}) · Fila ${pivotRow + 1}`,
+              arithmetic: `Desglose Aritmético Fila ${r + 1}:\n` + arithLines,
+              matrix: cloneMatrix(A),
+              highlight: { pivotRow: pivotRow, pivotCol: c, modifiedRow: r }
+            });
+          }
+        }
+        pivotRow++;
+      }
+
+      let rank = pivotPositions.length;
+      let freeCols = [];
+      for (let c = 0; c < cols; c++) {
+        if (!pivotPositions.some(p => p.c === c)) freeCols.push(c + 1);
+      }
+
+      steps.summary = {
+        rank: rank,
+        pivots: pivotPositions.map(p => `(${p.r + 1}, ${p.c + 1})`).join(', ') || 'Ninguno',
+        freeVars: freeCols.length > 0 ? freeCols.map(c => `x${c}`).join(', ') : 'Ninguna (Todas básicas)',
+        message: `Eliminación finalizada con éxito.`
+      };
+
+      lastResultMatrix = A;
+      return steps;
+    }
+
+    function solveInversePedagogical(M, id) {
+      const n = M.length;
+      let Aug = [];
+      for (let r = 0; r < n; r++) {
+        let row = [];
+        for (let c = 0; c < n; c++) row.push(new Fraction(M[r][c].n, M[r][c].d));
+        for (let c = 0; c < n; c++) row.push(r === c ? Fraction.ONE() : Fraction.ZERO());
+        Aug.push(row);
+      }
+
+      const steps = solveGaussianStepsAugmentedPedagogy(Aug, true, n, `Matriz Aumentada [${id} | I]`);
+      const finalMat = steps[steps.length - 1].matrix;
+
+      let isInv = true;
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const expected = (r === c) ? Fraction.ONE() : Fraction.ZERO();
+          if (!finalMat[r][c].equals(expected)) isInv = false;
+        }
+      }
+
+      steps.summary = {
+        rank: isInv ? n : "Menor a n",
+        pivots: isInv ? "Diagonal completa (1..n)" : "Incompleto",
+        freeVars: "N/A",
+        message: isInv 
+          ? `La matriz ${id} es invertible. La matriz a la derecha del divisor es la Inversa (${id})⁻¹.` 
+          : `La matriz ${id} es singular. No posee inversa.`
+      };
+
+      return steps;
+    }
+
+    function solveSystemPedagogical(M1, M2, id1, id2) {
+      const rows = M1.length, cols1 = M1[0].length, cols2 = M2[0].length;
+      let Aug = [];
+      for (let r = 0; r < rows; r++) {
+        let row = [];
+        for (let c = 0; c < cols1; c++) row.push(new Fraction(M1[r][c].n, M1[r][c].d));
+        for (let c = 0; c < cols2; c++) row.push(new Fraction(M2[r][c].n, M2[r][c].d));
+        Aug.push(row);
+      }
+
+      const steps = solveGaussianStepsAugmentedPedagogy(Aug, true, cols2, `Sistema Aumentado [${id1} | ${id2}]`);
+      const finalMat = steps[steps.length - 1].matrix;
+
+      let rankA = 0, rankAug = 0;
+      let pivotCols = [];
+
+      for (let r = 0; r < rows; r++) {
+        let nonZeroA = false, nonZeroAug = false;
+        let pColA = -1;
+        for (let c = 0; c < cols1; c++) {
+          if (!finalMat[r][c].isZero()) {
+            nonZeroA = true;
+            if (pColA === -1) pColA = c;
+          }
+        }
+        for (let c = 0; c < cols1 + cols2; c++) {
+          if (!finalMat[r][c].isZero()) nonZeroAug = true;
+        }
+        if (nonZeroA) { rankA++; pivotCols.push(pColA); }
+        if (nonZeroAug) rankAug++;
+      }
+
+      let freeVars = [];
+      for (let c = 0; c < cols1; c++) {
+        if (!pivotCols.includes(c)) freeVars.push(`x${c + 1}`);
+      }
+
+      let statusMsg = "";
+      if (rankA < rankAug) {
+        statusMsg = "SISTEMA INCOMPATIBLE (Sin Solución): Fila con coeficientes 0 en A pero término no nulo en B [0 ... 0 | k ≠ 0]. Rango(A) < Rango(A|B).";
+      } else if (rankA === rankAug && rankA === cols1) {
+        statusMsg = "SISTEMA COMPATIBLE DETERMINADO (Solución Única): Rango(A) = Rango(A|B) = Número de variables.";
+      } else {
+        statusMsg = `SISTEMA COMPATIBLE INDETERMINADO (Infinitas Soluciones): Rango(A) = Rango(A|B) = ${rankA} < Variables (${cols1}). Variables libres: ${freeVars.join(', ')}.`;
+      }
+
+      steps.summary = {
+        rank: rankA,
+        pivots: pivotCols.map(c => `x${c + 1}`).join(', ') || 'Ninguno',
+        freeVars: freeVars.length > 0 ? freeVars.join(', ') : 'Ninguna (Solución única)',
+        message: statusMsg
+      };
+
+      return steps;
+    }
+
+    function solveGaussianStepsAugmentedPedagogy(Aug, fullJordan, augmentedCols, contextLabel) {
+      let A = cloneMatrix(Aug);
+      const rows = A.length, cols = A[0].length;
+      const coeffCols = cols - augmentedCols;
+      const steps = [];
+      let pivotRow = 0;
+
+      for (let c = 0; c < coeffCols && pivotRow < rows; c++) {
+        let maxRow = pivotRow;
+        while (maxRow < rows && A[maxRow][c].isZero()) maxRow++;
+
+        if (maxRow === rows) continue;
+
+        if (maxRow !== pivotRow) {
+          let temp = A[pivotRow]; A[pivotRow] = A[maxRow]; A[maxRow] = temp;
+          steps.push({
+            title: `Intercambio de Filas (Pivoteo): Fila ${pivotRow + 1} ↔ Fila ${maxRow + 1}`,
+            pedagogy: `En el ${contextLabel}, el pivote diagonal actual era 0. Intercambiamos Fila ${pivotRow + 1} y Fila ${maxRow + 1}.`,
+            formula: `Fila ${pivotRow + 1} ↔ Fila ${maxRow + 1}`,
+            arithmetic: `Intercambio completo de coeficientes y término independiente.`,
+            matrix: cloneMatrix(A),
+            augmentedCols: augmentedCols,
+            highlight: { pivotRow: pivotRow, pivotCol: c, modifiedRow: pivotRow }
+          });
+        }
+
+        let pivotVal = A[pivotRow][c];
+        if (!pivotVal.equals(Fraction.ONE())) {
+          let factor = pivotVal;
+          A[pivotRow] = A[pivotRow].map(cell => cell.div(factor));
+          steps.push({
+            title: `Normalización del Pivote: Fila ${pivotRow + 1}`,
+            pedagogy: `Dividimos la Fila ${pivotRow + 1} entre ${factor.toString(displayFormat, decimalPrecision)} para obtener un 1 principal.`,
+            formula: `Fila ${pivotRow + 1} ← Fila ${pivotRow + 1} / (${factor.toString(displayFormat, decimalPrecision)})`,
+            arithmetic: `Todos los elementos divididos por ${factor.toString(displayFormat, decimalPrecision)}.`,
+            matrix: cloneMatrix(A),
+            augmentedCols: augmentedCols,
+            highlight: { pivotRow: pivotRow, pivotCol: c, modifiedRow: pivotRow }
+          });
+        }
+
+        const startR = fullJordan ? 0 : pivotRow + 1;
+        for (let r = startR; r < rows; r++) {
+          if (r !== pivotRow && !A[r][c].isZero()) {
+            let mult = A[r][c];
+            A[r] = A[r].map((cell, k) => cell.sub(mult.mul(A[pivotRow][k])));
+
+            steps.push({
+              title: `Eliminación en Fila ${r + 1}, Columna ${c + 1}`,
+              pedagogy: `Anulamos el valor en (${r + 1}, ${c + 1}) restando (${mult.toString(displayFormat, decimalPrecision)}) veces la Fila Pivote ${pivotRow + 1}.`,
+              formula: `Fila ${r + 1} ← Fila ${r + 1} - (${mult.toString(displayFormat, decimalPrecision)}) · Fila ${pivotRow + 1}`,
+              arithmetic: `Cálculo aplicado a toda la fila (lado izquierdo y derecho del divisor).`,
+              matrix: cloneMatrix(A),
+              augmentedCols: augmentedCols,
+              highlight: { pivotRow: pivotRow, pivotCol: c, modifiedRow: r }
+            });
+          }
+        }
+        pivotRow++;
+      }
+      return steps;
+    }
+
+    function execStepByStep(mode) {
+      try {
+        window.lastOpExec = () => execStepByStep(mode);
+
+        if (mode === 'gauss') {
+          const id = document.getElementById('singleTargetSelect').value;
+          const M = getMatrix(id);
+          showResultHeader(`Eliminación Gaussiana Paso a Paso (${id})`, `Forma Escalonada por Filas`);
+          renderStepList(solveGaussianPedagogical(M, false));
+        } else if (mode === 'gaussJordan') {
+          const id = document.getElementById('singleTargetSelect').value;
+          const M = getMatrix(id);
+          showResultHeader(`Eliminación Gauss-Jordan Paso a Paso (${id})`, `Forma Escalonada Reducida (RREF)`);
+          renderStepList(solveGaussianPedagogical(M, true));
+        } else if (mode === 'inversaStep') {
+          const id = document.getElementById('singleTargetSelect').value;
+          const M = getMatrix(id);
+          if (M.length !== M[0].length) throw new Error("La matriz debe ser cuadrada.");
+          showResultHeader(`Cálculo de Inversa por Matriz Aumentada [${id} | I]`, `Desarrollo Paso a Paso`);
+          renderStepList(solveInversePedagogical(M, id));
+        } else if (mode === 'sistemaStep') {
+          const id1 = document.getElementById('binaryTarget1Select').value;
+          const id2 = document.getElementById('binaryTarget2Select').value;
+          const M1 = getMatrix(id1);
+          const M2 = getMatrix(id2);
+          if (M1.length !== M2.length) throw new Error("El número de filas de ambas matrices debe coincidir.");
+          showResultHeader(`Resolución del Sistema Aumentado [${id1} | ${id2}]`, `Paso a Paso con Clasificación Teórica`);
+          renderStepList(solveSystemPedagogical(M1, M2, id1, id2));
+        }
+      } catch (err) {
+        showError(err.message);
+      }
+    }
+
+
+    /* ==========================================================================
+       6. UI RENDERERS & STEP LIST BUILDERS
+       ========================================================================== */
+
+    function showResultHeader(title, subtitle, enableReuse = false) {
+      document.getElementById('resultTitle').innerText = title;
+      document.getElementById('resultSubtitle').innerText = subtitle;
+      document.getElementById('resultSection').classList.remove('hidden');
+      document.getElementById('reuseContainer').classList.toggle('hidden', !enableReuse);
+      document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function renderMatrixHTML(matFracs, highlight = null, augmentedCols = 0) {
+      const rows = matFracs.length;
+      const cols = matFracs[0].length;
+      const leftCols = cols - augmentedCols;
+
+      let html = `<div class="matrix-bracket text-purple-800 dark:text-purple-400 my-2"><div class="grid gap-2" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr));">`;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const isAugmented = augmentedCols > 0 && c === leftCols - 1;
+          const isPivot = highlight && highlight.pivotRow === r && highlight.pivotCol === c;
+          const isModified = highlight && highlight.modifiedRow === r;
+
+          let cellStyle = "w-12 sm:w-14 h-10 flex items-center justify-center font-mono text-xs sm:text-sm font-bold rounded-xl border transition shadow-sm ";
+
+          if (isPivot) {
+            cellStyle += "bg-amber-400/30 border-amber-500 text-amber-900 dark:text-amber-200 ring-2 ring-amber-500/50 ";
+          } else if (isModified) {
+            cellStyle += "bg-purple-100 dark:bg-purple-900/60 border-purple-400 text-purple-900 dark:text-purple-100 ";
+          } else {
+            cellStyle += "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 ";
+          }
+
+          if (isAugmented) cellStyle += " augmented-divider pr-2";
+
+          html += `<div class="${cellStyle}">${matFracs[r][c].toString(displayFormat, decimalPrecision)}</div>`;
+        }
+      }
+      html += `</div></div>`;
+      return html;
+    }
+
+    function renderStepList(steps) {
+      const body = document.getElementById('resultBody');
+      let html = `<div class="space-y-6">`;
+
+      steps.forEach((st, idx) => {
+        html += `
+          <div class="bg-slate-50 dark:bg-slate-800/40 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4 shadow-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700/60 pb-3">
+              <div class="flex items-center gap-3">
+                <span class="w-7 h-7 rounded-full bg-purple-600 text-white font-bold flex items-center justify-center text-xs shadow-md">${idx + 1}</span>
+                <h4 class="text-sm font-bold text-slate-800 dark:text-slate-100">${st.title}</h4>
+              </div>
+              <span class="px-3 py-1 rounded-xl bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 font-mono text-xs font-bold border border-purple-200 dark:border-purple-800">
+                ${st.formula}
+              </span>
+            </div>
+
+            <div class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-white/60 dark:bg-slate-900/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800/60">
+              <span class="font-bold text-purple-600 dark:text-purple-400">Explicación Matemática: </span>${st.pedagogy}
+            </div>
+
+            ${st.arithmetic ? `
+              <div class="space-y-1">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Desglose y Operaciones con Números Reales:</span>
+                <pre class="text-xs font-mono text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-x-auto whitespace-pre-wrap">${st.arithmetic}</pre>
+              </div>
+            ` : ''}
+
+            <div class="flex flex-col items-center justify-center py-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 mb-1">Estado Resultante de la Matriz</span>
+              ${renderMatrixHTML(st.matrix, st.highlight, st.augmentedCols || 0)}
+            </div>
+          </div>
+        `;
+      });
+
+      if (steps.summary) {
+        html += `
+          <div class="p-6 bg-gradient-to-r from-purple-900/10 via-fuchsia-900/10 to-pink-900/10 dark:from-purple-950/40 dark:via-fuchsia-950/40 dark:to-pink-950/40 rounded-3xl border border-purple-200 dark:border-purple-800 space-y-3">
+            <div class="flex items-center gap-2 text-purple-700 dark:text-purple-300 font-bold text-sm border-b border-purple-200 dark:border-purple-800/60 pb-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <span>Resumen Final y Conclusiones del Procedimiento</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div class="bg-white/80 dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <span class="font-bold text-slate-500 block mb-1">Rango de la Matriz:</span>
+                <span class="text-base font-extrabold text-purple-600 dark:text-purple-400 font-mono">${steps.summary.rank}</span>
+              </div>
+              <div class="bg-white/80 dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <span class="font-bold text-slate-500 block mb-1">Pivotes / Clave:</span>
+                <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 font-mono">${steps.summary.pivots}</span>
+              </div>
+              <div class="bg-white/80 dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <span class="font-bold text-slate-500 block mb-1">Variables Libres:</span>
+                <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 font-mono">${steps.summary.freeVars}</span>
+              </div>
+            </div>
+
+            <p class="text-xs font-semibold text-slate-700 dark:text-slate-300 pt-2 leading-relaxed">${steps.summary.message}</p>
+          </div>
+        `;
+      }
+
+      html += `</div>`;
+      body.innerHTML = html;
+    }
+  </script>
+</body>
+</html>
